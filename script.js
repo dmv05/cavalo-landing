@@ -1,9 +1,9 @@
 /* ============================================
    CAVALO.APP — Landing Page Script
    ============================================ */
+// Emails envoyés vers Google Sheets via Apps Script
 
-// Simple form handler — no backend needed for now
-// Emails are stored locally + you can connect a service later
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyJOOLMVFwu_kkXQ6dCYybeeH0omLtnKzyWp7OY7PlaQ7Zu80efkqzsziJxoJB0_0-A/exec';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   forms.forEach(({ form, note }) => {
     if (!form) return;
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const email = form.querySelector('input[type="email"]').value.trim();
@@ -24,23 +24,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!email) return;
 
-      // Store in localStorage
-      const leads = JSON.parse(localStorage.getItem('cavalo_leads') || '[]');
-      leads.push({ email, name, date: new Date().toISOString() });
-      localStorage.setItem('cavalo_leads', JSON.stringify(leads));
+      // Send to Google Sheets
+      try {
+        const resp = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email }),
+        });
 
-      // Success feedback
-      const msg = name
-        ? `Merci ${name} ! Vous serez informé du lancement. 🐴`
-        : 'Merci ! Vous serez informé du lancement. 🐴';
+        const msg = name
+          ? `Merci ${name} ! Vous serez informé du lancement. 🐴`
+          : 'Merci ! Vous serez informé du lancement. 🐴';
 
-      if (note) {
-        note.textContent = msg;
-        note.className = 'form-note success';
+        if (note) {
+          note.textContent = msg;
+          note.className = 'form-note success';
+        }
+        showToast(msg);
+        form.reset();
+
+      } catch (err) {
+        if (note) {
+          note.textContent = 'Erreur réseau — réessayez plus tard.';
+          note.className = 'form-note error';
+        }
       }
-
-      showToast(msg);
-      form.reset();
     });
   });
 
